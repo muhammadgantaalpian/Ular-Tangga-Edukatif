@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ular Tangga Bahasa Indonesia</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+        .board-cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            position: relative;
+        }
+        
+        .player {
+            position: absolute;
+            font-size: 16px;
+            z-index: 10;
+            transition: all 0.8s ease-in-out;
+        }
+        
+        .snake-cell {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        }
+        
+        .ladder-cell {
+            background: linear-gradient(45deg, #4ecdc4, #7fdbda);
+        }
+        
+        .bounce {
+            animation: bounce 0.5s ease-in-out;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        .celebration {
+            animation: celebrate 2s ease-in-out infinite;
+        }
+        
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.2) rotate(-10deg); }
+            75% { transform: scale(1.2) rotate(10deg); }
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gradient-to-b from-blue-400 to-purple-600 font-sans">
+  <div class="h-full flex flex-col"><!-- Header -->
+   <header class="bg-white shadow-lg p-4">
+    <h1 id="gameTitle" class="text-2xl font-bold text-center text-purple-800">Ular Tangga Bahasa Indonesia</h1>
+    <div class="flex justify-between items-center mt-2">
+     <div class="text-center">
+      <h2 id="teamLeftName" class="text-lg font-semibold text-red-600">Tim Merah</h2>
+      <div class="text-sm">
+       Posisi: <span id="positionLeft" class="font-bold">1</span>
+      </div>
+     </div>
+     <div class="text-center"><button id="startBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full text-sm shadow-lg transform hover:scale-105 transition-all"> 🎲 Mulai Permainan </button> <button id="resetBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-full ml-2 shadow-lg text-sm"> 🔄 Reset </button>
+     </div>
+     <div class="text-center">
+      <h2 id="teamRightName" class="text-lg font-semibold text-blue-600">Tim Biru</h2>
+      <div class="text-sm">
+       Posisi: <span id="positionRight" class="font-bold">1</span>
+      </div>
+     </div>
+    </div>
+   </header><!-- Game Board -->
+   <main class="flex-1 p-2 flex"><!-- Snake and Ladder Board -->
+    <div class="w-1/2 pr-2">
+     <div class="bg-white rounded-lg p-2 shadow-lg">
+      <h3 class="text-center font-bold mb-2 text-sm">Papan Ular Tangga</h3>
+      <div id="gameBoard" class="grid grid-cols-10 gap-0 mx-auto" style="width: 400px;"><!-- Board cells will be generated here -->
+      </div>
+      <div class="mt-2 text-xs">
+       <div class="flex items-center justify-center space-x-4">
+        <div class="flex items-center">
+         <div class="w-4 h-4 snake-cell mr-1"></div><span>🐍 Ular</span>
+        </div>
+        <div class="flex items-center">
+         <div class="w-4 h-4 ladder-cell mr-1"></div><span>🪜 Tangga</span>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div><!-- Question Panel -->
+    <div class="w-1/2 pl-2">
+     <div id="questionPanel" class="bg-white rounded-lg p-4 shadow-lg hidden">
+      <div class="text-center mb-3">
+       <h3 class="text-lg font-bold text-gray-800">Soal Bahasa Indonesia</h3>
+       <div class="text-xs text-gray-600">
+        Benar: +2 langkah | Salah: +1 langkah
+       </div>
+      </div><!-- Left Team Panel -->
+      <div class="grid grid-cols-1 gap-4 mb-4">
+       <div class="border-2 border-red-400 rounded-lg p-3 bg-red-50">
+        <h4 id="teamLeftHeader" class="text-sm font-bold text-red-600 text-center mb-2">Tim Merah</h4>
+        <div id="answerOptionsLeft" class="space-y-1"><!-- Left team options -->
+        </div>
+        <div id="statusLeft" class="text-center mt-2 text-xs font-semibold"></div>
+       </div><!-- Right Team Panel -->
+       <div class="border-2 border-blue-400 rounded-lg p-3 bg-blue-50">
+        <h4 id="teamRightHeader" class="text-sm font-bold text-blue-600 text-center mb-2">Tim Biru</h4>
+        <div id="answerOptionsRight" class="space-y-1"><!-- Right team options -->
+        </div>
+        <div id="statusRight" class="text-center mt-2 text-xs font-semibold"></div>
+       </div>
+      </div>
+      <div id="feedback" class="text-center hidden">
+       <p id="feedbackText" class="text-sm font-semibold mb-2"></p><button id="nextBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-sm"> Soal Berikutnya ➡️ </button>
+      </div>
+     </div><!-- Game Over Panel -->
+     <div id="gameOverPanel" class="bg-white rounded-lg p-6 shadow-lg text-center hidden">
+      <div class="text-4xl mb-3">
+       🎉
+      </div>
+      <h2 class="text-2xl font-bold mb-2 text-yellow-600">Selamat!</h2>
+      <p id="winnerText" class="text-lg mb-3"></p><button id="playAgainBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg"> 🎮 Main Lagi </button>
+     </div><!-- Start Panel -->
+     <div id="startPanel" class="bg-white rounded-lg p-6 shadow-lg text-center">
+      <div class="text-4xl mb-3">
+       🐍🪜
+      </div>
+      <h2 class="text-xl font-bold mb-2 text-purple-600">Ular Tangga Bahasa Indonesia</h2>
+      <p class="text-sm mb-4 text-gray-600">Jawab soal Bahasa Indonesia untuk maju di papan ular tangga!<br><strong>Benar:</strong> +2 langkah<br><strong>Salah:</strong> +1 langkah<br>
+        Hati-hati dengan ular dan manfaatkan tangga!</p><button onclick="startGame()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg"> 🎲 Mulai Bermain </button>
+     </div>
+    </div>
+   </main><!-- Creator Credit -->
+   <div class="fixed bottom-2 right-2 bg-white bg-opacity-90 rounded-lg p-2 shadow-lg text-xs text-center">
+    <div class="font-bold text-purple-700">
+     Muhammad Ganta Alpian
+    </div>
+    <div class="text-gray-600">
+     SDN Nanga Bulik 6
+    </div>
+   </div>
+  </div>
+  <script>
+        // Default configuration
+        const defaultConfig = {
+            game_title: "Ular Tangga Bahasa Indonesia",
+            team_left_name: "Tim Merah",
+            team_right_name: "Tim Biru"
+        };
+
+        // Game state
+        let gameState = {
+            positionLeft: 1,
+            positionRight: 1,
+            questionsLeft: [],
+            questionsRight: [],
+            currentQuestionIndex: 0,
+            gameStarted: false,
+            gameEnded: false,
+            leftAnswered: false,
+            rightAnswered: false,
+            leftAnswer: null,
+            rightAnswer: null,
+            questionStartTime: null
+        };
+
+        // Snakes and Ladders positions
+        const snakes = {
+            16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78
+        };
+        
+        const ladders = {
+            1: 38, 4: 14, 9: 21, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100
+        };
+
+        // Indonesian Language questions for grade 6
+        const questionBank = [
+            {
+                question: "Apa yang dimaksud dengan kata baku?",
+                options: ["Kata yang sering digunakan", "Kata sesuai kaidah bahasa yang benar", "Kata yang mudah dipahami", "Kata yang pendek"],
+                correct: 1
+            },
+            {
+                question: "Manakah penulisan kata yang benar?",
+                options: ["apotek", "apotik", "apothek", "apotex"],
+                correct: 0
+            },
+            {
+                question: "Apa fungsi utama paragraf dalam sebuah teks?",
+                options: ["Memperindah tulisan", "Mengembangkan satu ide pokok", "Membuat tulisan panjang", "Mengisi halaman"],
+                correct: 1
+            },
+            {
+                question: "Kata 'membaca' termasuk jenis kata...",
+                options: ["Kata benda", "Kata kerja", "Kata sifat", "Kata keterangan"],
+                correct: 1
+            },
+            {
+                question: "Manakah kalimat yang menggunakan tanda baca yang benar?",
+                options: ["Ibu berkata, \"Ayo makan!\"", "Ibu berkata, 'Ayo makan!'", "Ibu berkata: Ayo makan!", "Ibu berkata; Ayo makan!"],
+                correct: 0
+            },
+            {
+                question: "Apa yang dimaksud dengan sinonim?",
+                options: ["Kata yang berlawanan makna", "Kata yang sama makna", "Kata yang sulit dipahami", "Kata yang panjang"],
+                correct: 1
+            },
+            {
+                question: "Antonim dari kata 'rajin' adalah...",
+                options: ["Giat", "Tekun", "Malas", "Aktif"],
+                correct: 2
+            },
+            {
+                question: "Manakah yang termasuk kalimat tanya?",
+                options: ["Hari ini cuaca cerah", "Tutup pintu itu!", "Kapan kamu datang?", "Wah, indah sekali!"],
+                correct: 2
+            },
+            {
+                question: "Imbuhan 'me-' pada kata 'menulis' berfungsi untuk...",
+                options: ["Membentuk kata benda", "Membentuk kata kerja", "Membentuk kata sifat", "Membentuk kata keterangan"],
+                correct: 1
+            },
+            {
+                question: "Manakah penulisan huruf kapital yang benar?",
+                options: ["saya tinggal di Jakarta", "Saya tinggal di jakarta", "Saya tinggal di Jakarta", "saya tinggal di jakarta"],
+                correct: 2
+            },
+            {
+                question: "Apa yang dimaksud dengan pantun?",
+                options: ["Puisi bebas", "Puisi lama bersajak a-b-a-b", "Cerita pendek", "Drama singkat"],
+                correct: 1
+            },
+            {
+                question: "Manakah kata yang menggunakan awalan 'ber-'?",
+                options: ["Berlari", "Melari", "Pelari", "Larian"],
+                correct: 0
+            },
+            {
+                question: "Kalimat 'Adik menangis karena jatuh' termasuk kalimat...",
+                options: ["Tunggal", "Majemuk setara", "Majemuk bertingkat", "Majemuk campuran"],
+                correct: 2
+            },
+            {
+                question: "Manakah yang termasuk kata sifat?",
+                options: ["Berlari", "Cantik", "Meja", "Kemarin"],
+                correct: 1
+            },
+            {
+                question: "Apa fungsi tanda titik (.) dalam kalimat?",
+                options: ["Mengakhiri kalimat tanya", "Mengakhiri kalimat seru", "Mengakhiri kalimat berita", "Memisahkan kata"],
+                correct: 2
+            },
+            {
+                question: "Manakah contoh majas personifikasi?",
+                options: ["Angin berbisik lembut", "Dia cantik seperti bunga", "Suaranya keras sekali", "Rumahnya sangat besar"],
+                correct: 0
+            },
+            {
+                question: "Kata 'kemarin' termasuk kata keterangan...",
+                options: ["Tempat", "Waktu", "Cara", "Alat"],
+                correct: 1
+            },
+            {
+                question: "Manakah kalimat yang menggunakan kata hubung 'tetapi'?",
+                options: ["Dia pintar dan rajin", "Dia pintar tetapi malas", "Dia pintar karena rajin", "Dia pintar sehingga juara"],
+                correct: 1
+            },
+            {
+                question: "Apa yang dimaksud dengan cerita fabel?",
+                options: ["Cerita tentang manusia", "Cerita tentang dewa", "Cerita tentang binatang", "Cerita tentang alam"],
+                correct: 2
+            },
+            {
+                question: "Manakah penulisan kata ulang yang benar?",
+                options: ["Anak2", "Anak-anak", "Anakanak", "Anak anak"],
+                correct: 1
+            }
+        ];
+
+        // Shuffle array function
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Create game board
+        function createBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            
+            for (let row = 9; row >= 0; row--) {
+                for (let col = 0; col < 10; col++) {
+                    let cellNumber;
+                    if (row % 2 === 1) {
+                        cellNumber = row * 10 + col + 1;
+                    } else {
+                        cellNumber = row * 10 + (9 - col) + 1;
+                    }
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    cell.id = `cell-${cellNumber}`;
+                    
+                    // Add special styling for snakes and ladders
+                    if (snakes[cellNumber]) {
+                        cell.classList.add('snake-cell');
+                        cell.innerHTML = `${cellNumber}<br>🐍`;
+                    } else if (ladders[cellNumber]) {
+                        cell.classList.add('ladder-cell');
+                        cell.innerHTML = `${cellNumber}<br>🪜`;
+                    } else {
+                        cell.textContent = cellNumber;
+                        cell.style.backgroundColor = cellNumber === 100 ? '#ffd700' : '#f0f0f0';
+                    }
+                    
+                    board.appendChild(cell);
+                }
+            }
+            
+            // Add players to starting position
+            updatePlayerPositions();
+        }
+
+        // Update player positions on board
+        function updatePlayerPositions() {
+            // Remove existing players
+            document.querySelectorAll('.player').forEach(p => p.remove());
+            
+            // Add left player
+            const leftCell = document.getElementById(`cell-${gameState.positionLeft}`);
+            if (leftCell) {
+                const leftPlayer = document.createElement('div');
+                leftPlayer.className = 'player';
+                leftPlayer.textContent = '🔴';
+                leftPlayer.style.left = '-8px';
+                leftPlayer.style.top = '-8px';
+                leftCell.appendChild(leftPlayer);
+            }
+            
+            // Add right player
+            const rightCell = document.getElementById(`cell-${gameState.positionRight}`);
+            if (rightCell) {
+                const rightPlayer = document.createElement('div');
+                rightPlayer.className = 'player';
+                rightPlayer.textContent = '🔵';
+                rightPlayer.style.right = '-8px';
+                rightPlayer.style.top = '-8px';
+                rightCell.appendChild(rightPlayer);
+            }
+            
+            // Update position display
+            document.getElementById('positionLeft').textContent = gameState.positionLeft;
+            document.getElementById('positionRight').textContent = gameState.positionRight;
+        }
+
+        // Initialize game
+        function initGame() {
+            gameState.questionsLeft = shuffleArray(questionBank);
+            gameState.questionsRight = shuffleArray(questionBank);
+            gameState.currentQuestionIndex = 0;
+            gameState.positionLeft = 1;
+            gameState.positionRight = 1;
+            gameState.gameStarted = false;
+            gameState.gameEnded = false;
+            gameState.leftAnswered = false;
+            gameState.rightAnswered = false;
+            gameState.leftAnswer = null;
+            gameState.rightAnswer = null;
+            gameState.questionStartTime = null;
+            
+            createBoard();
+            hideAllPanels();
+            document.getElementById('startPanel').classList.remove('hidden');
+        }
+
+        // Start game
+        function startGame() {
+            gameState.gameStarted = true;
+            showQuestion();
+        }
+
+        // Show question
+        function showQuestion() {
+            if (gameState.currentQuestionIndex >= gameState.questionsLeft.length || 
+                gameState.currentQuestionIndex >= gameState.questionsRight.length) {
+                // Reshuffle questions if we run out
+                gameState.questionsLeft = shuffleArray(questionBank);
+                gameState.questionsRight = shuffleArray(questionBank);
+                gameState.currentQuestionIndex = 0;
+            }
+
+            const questionLeft = gameState.questionsLeft[gameState.currentQuestionIndex];
+            const questionRight = gameState.questionsRight[gameState.currentQuestionIndex];
+            
+            // Reset answer states
+            gameState.leftAnswered = false;
+            gameState.rightAnswered = false;
+            gameState.leftAnswer = null;
+            gameState.rightAnswer = null;
+            gameState.questionStartTime = Date.now();
+            
+            // Update team headers
+            document.getElementById('teamLeftHeader').textContent = window.elementSdk?.config?.team_left_name || defaultConfig.team_left_name;
+            document.getElementById('teamRightHeader').textContent = window.elementSdk?.config?.team_right_name || defaultConfig.team_right_name;
+            
+            // Create answer options for both teams
+            createAnswerOptions('Left', questionLeft);
+            createAnswerOptions('Right', questionRight);
+            
+            // Clear status
+            document.getElementById('statusLeft').textContent = '';
+            document.getElementById('statusRight').textContent = '';
+            
+            document.getElementById('feedback').classList.add('hidden');
+            hideAllPanels();
+            document.getElementById('questionPanel').classList.remove('hidden');
+        }
+
+        // Create answer options for a team
+        function createAnswerOptions(team, question) {
+            const container = document.getElementById(`answerOptions${team}`);
+            container.innerHTML = '';
+            
+            // Add question text
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'bg-gray-50 p-2 rounded-lg mb-2 border border-gray-200';
+            questionDiv.innerHTML = `<strong>Soal:</strong><br><span class="text-xs">${question.question}</span>`;
+            container.appendChild(questionDiv);
+            
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'bg-white hover:bg-gray-100 border border-gray-300 rounded p-1 text-left transition-all hover:scale-105 text-xs w-full';
+                button.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+                button.onclick = () => selectAnswer(index, team.toLowerCase());
+                container.appendChild(button);
+            });
+        }
+
+        // Select answer
+        function selectAnswer(selectedIndex, team) {
+            const questionLeft = gameState.questionsLeft[gameState.currentQuestionIndex];
+            const questionRight = gameState.questionsRight[gameState.currentQuestionIndex];
+            const question = team === 'left' ? questionLeft : questionRight;
+            const isCorrect = selectedIndex === question.correct;
+            const answerTime = Date.now() - gameState.questionStartTime;
+            
+            // Record answer
+            if (team === 'left' && !gameState.leftAnswered) {
+                gameState.leftAnswered = true;
+                gameState.leftAnswer = { index: selectedIndex, correct: isCorrect, time: answerTime };
+                
+                // Disable left team buttons
+                const leftButtons = document.querySelectorAll('#answerOptionsLeft button');
+                leftButtons.forEach(button => button.disabled = true);
+                
+                // Show status
+                document.getElementById('statusLeft').textContent = isCorrect ? '✅ Benar!' : '❌ Salah!';
+                document.getElementById('statusLeft').className = isCorrect ? 'text-center mt-2 text-xs font-semibold text-green-600' : 'text-center mt-2 text-xs font-semibold text-red-600';
+                
+            } else if (team === 'right' && !gameState.rightAnswered) {
+                gameState.rightAnswered = true;
+                gameState.rightAnswer = { index: selectedIndex, correct: isCorrect, time: answerTime };
+                
+                // Disable right team buttons
+                const rightButtons = document.querySelectorAll('#answerOptionsRight button');
+                rightButtons.forEach(button => button.disabled = true);
+                
+                // Show status
+                document.getElementById('statusRight').textContent = isCorrect ? '✅ Benar!' : '❌ Salah!';
+                document.getElementById('statusRight').className = isCorrect ? 'text-center mt-2 text-xs font-semibold text-green-600' : 'text-center mt-2 text-xs font-semibold text-red-600';
+            }
+            
+            // Check if both teams have answered
+            if (gameState.leftAnswered && gameState.rightAnswered) {
+                processRoundResults();
+            }
+        }
+
+        // Process results
+        function processRoundResults() {
+            const questionLeft = gameState.questionsLeft[gameState.currentQuestionIndex];
+            const questionRight = gameState.questionsRight[gameState.currentQuestionIndex];
+            
+            // Highlight correct answers
+            highlightAnswers('Left', questionLeft);
+            highlightAnswers('Right', questionRight);
+            
+            let feedbackMessages = [];
+            
+            // Process left team movement
+            if (gameState.leftAnswer.correct) {
+                gameState.positionLeft = Math.min(100, gameState.positionLeft + 2);
+                feedbackMessages.push(`${window.elementSdk?.config?.team_left_name || defaultConfig.team_left_name}: Benar! +2 langkah`);
+            } else {
+                gameState.positionLeft = Math.min(100, gameState.positionLeft + 1);
+                feedbackMessages.push(`${window.elementSdk?.config?.team_left_name || defaultConfig.team_left_name}: Salah! +1 langkah`);
+            }
+            
+            // Process right team movement
+            if (gameState.rightAnswer.correct) {
+                gameState.positionRight = Math.min(100, gameState.positionRight + 2);
+                feedbackMessages.push(`${window.elementSdk?.config?.team_right_name || defaultConfig.team_right_name}: Benar! +2 langkah`);
+            } else {
+                gameState.positionRight = Math.min(100, gameState.positionRight + 1);
+                feedbackMessages.push(`${window.elementSdk?.config?.team_right_name || defaultConfig.team_right_name}: Salah! +1 langkah`);
+            }
+            
+            // Apply snakes and ladders
+            applySnakesAndLadders();
+            
+            // Update positions
+            updatePlayerPositions();
+            
+            // Show feedback
+            document.getElementById('feedbackText').innerHTML = feedbackMessages.join('<br>');
+            document.getElementById('feedback').classList.remove('hidden');
+            
+            // Check for winner
+            if (gameState.positionLeft >= 100 || gameState.positionRight >= 100) {
+                setTimeout(() => {
+                    endGame();
+                }, 2000);
+                return;
+            }
+        }
+
+        // Apply snakes and ladders effects
+        function applySnakesAndLadders() {
+            // Left team
+            if (snakes[gameState.positionLeft] && !gameState.leftAnswer.correct) {
+                gameState.positionLeft = snakes[gameState.positionLeft];
+                document.getElementById('feedbackText').innerHTML += '<br>🐍 Tim Merah kena ular!';
+            } else if (ladders[gameState.positionLeft] && gameState.leftAnswer.correct) {
+                gameState.positionLeft = ladders[gameState.positionLeft];
+                document.getElementById('feedbackText').innerHTML += '<br>🪜 Tim Merah naik tangga!';
+            }
+            
+            // Right team
+            if (snakes[gameState.positionRight] && !gameState.rightAnswer.correct) {
+                gameState.positionRight = snakes[gameState.positionRight];
+                document.getElementById('feedbackText').innerHTML += '<br>🐍 Tim Biru kena ular!';
+            } else if (ladders[gameState.positionRight] && gameState.rightAnswer.correct) {
+                gameState.positionRight = ladders[gameState.positionRight];
+                document.getElementById('feedbackText').innerHTML += '<br>🪜 Tim Biru naik tangga!';
+            }
+        }
+
+        // Highlight answers
+        function highlightAnswers(team, question) {
+            const buttons = document.querySelectorAll(`#answerOptions${team} button`);
+            const teamAnswer = team === 'Left' ? gameState.leftAnswer : gameState.rightAnswer;
+            const answerButtons = Array.from(buttons).slice(1); // Skip question div
+            
+            // Highlight correct answer
+            if (answerButtons[question.correct]) {
+                answerButtons[question.correct].classList.add('bg-green-200', 'border-green-500');
+            }
+            
+            // Highlight selected answer if wrong
+            if (!teamAnswer.correct && answerButtons[teamAnswer.index]) {
+                answerButtons[teamAnswer.index].classList.add('bg-red-200', 'border-red-500');
+            }
+        }
+
+        // Next question
+        function nextQuestion() {
+            gameState.currentQuestionIndex++;
+            showQuestion();
+        }
+
+        // End game
+        function endGame() {
+            gameState.gameEnded = true;
+            let winner;
+            
+            if (gameState.positionLeft >= 100 && gameState.positionRight >= 100) {
+                winner = 'Seri! Kedua tim mencapai finish bersamaan!';
+            } else if (gameState.positionLeft >= 100) {
+                winner = `${window.elementSdk?.config?.team_left_name || defaultConfig.team_left_name} menang!`;
+                document.querySelector('#cell-100 .player:first-child')?.classList.add('celebration');
+            } else if (gameState.positionRight >= 100) {
+                winner = `${window.elementSdk?.config?.team_right_name || defaultConfig.team_right_name} menang!`;
+                document.querySelector('#cell-100 .player:last-child')?.classList.add('celebration');
+            }
+            
+            document.getElementById('winnerText').textContent = winner;
+            hideAllPanels();
+            document.getElementById('gameOverPanel').classList.remove('hidden');
+        }
+
+        // Hide all panels
+        function hideAllPanels() {
+            document.getElementById('questionPanel').classList.add('hidden');
+            document.getElementById('gameOverPanel').classList.add('hidden');
+            document.getElementById('startPanel').classList.add('hidden');
+        }
+
+        // Event listeners
+        document.getElementById('startBtn').onclick = () => {
+            if (!gameState.gameStarted) {
+                startGame();
+            }
+        };
+
+        document.getElementById('resetBtn').onclick = () => {
+            initGame();
+        };
+
+        document.getElementById('nextBtn').onclick = nextQuestion;
+
+        document.getElementById('playAgainBtn').onclick = () => {
+            initGame();
+        };
+
+        // Element SDK implementation
+        async function onConfigChange(config) {
+            document.getElementById('gameTitle').textContent = config.game_title || defaultConfig.game_title;
+            document.getElementById('teamLeftName').textContent = config.team_left_name || defaultConfig.team_left_name;
+            document.getElementById('teamRightName').textContent = config.team_right_name || defaultConfig.team_right_name;
+        }
+
+        function mapToCapabilities(config) {
+            return {
+                recolorables: [],
+                borderables: [],
+                fontEditable: undefined,
+                fontSizeable: undefined
+            };
+        }
+
+        function mapToEditPanelValues(config) {
+            return new Map([
+                ["game_title", config.game_title || defaultConfig.game_title],
+                ["team_left_name", config.team_left_name || defaultConfig.team_left_name],
+                ["team_right_name", config.team_right_name || defaultConfig.team_right_name]
+            ]);
+        }
+
+        // Initialize Element SDK
+        if (window.elementSdk) {
+            window.elementSdk.init({
+                defaultConfig,
+                onConfigChange,
+                mapToCapabilities,
+                mapToEditPanelValues
+            });
+        }
+
+        // Initialize game on load
+        initGame();
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99ee96e82125f9b3',t:'MTc2MzIwODA0MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
